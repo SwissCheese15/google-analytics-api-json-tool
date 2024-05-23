@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporting API Tool</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="content">
+        <h1>Reporting API Tool</h1>
+        <form id="analyticsForm">
+            <div class="checkbox-container">
+                <div class="flex-col">
+                    <h2>Metrics:</h2>
+                    <label><input type="checkbox" name="metrics" value="ga:users" checked> Users</label>
+                    <label><input type="checkbox" name="metrics" value="ga:newUsers" checked> New Users</label>
+                    <label><input type="checkbox" name="metrics" value="ga:sessions" checked> Sessions</label>
+                    <label><input type="checkbox" name="metrics" value="ga:bounceRate" checked> Bounce Rate</label>
+                    <label><input type="checkbox" name="metrics" value="ga:avgSessionDuration" checked> Avg. Session Duration</label>
+                </div>
+                <div class="flex-col">
+                    <h2>Dimensions:</h2>
+                    <div class="flex-row-gap">
+                        <div class="flex-col">
+                            <label><input type="checkbox" name="dimensions" value="ga:pageTitle"> 1. All Pages</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:language"> 2. Language</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:networkLocation"> 3. Location</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:deviceCategory"> 4. Device Category</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:sourceMedium"> 5. Source-Medium</label>
+                        </div>
+                        <div class="flex-col">
+                            <label><input type="checkbox" name="dimensions" value="ga:source"> 6. Referrals</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:socialNetwork"> 7. Network Referrals</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:campains"> 9. All Campaigns</label>
+                            <label><input type="checkbox" name="dimensions" value="ga:goalCompletionLocation"> 10. Goal URLs</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-col">
+                <h2>Time Granularity:</h2>
+                <div class="radio-container">
+                    <label><input type="radio" name="timeGranularity" value="day" required>Day</label>
+                    <label><input type="radio" name="timeGranularity" value="month" required>Month</label>
+                    <label><input type="radio" name="timeGranularity" value="year" required>Year</label>
+                </div>
+            </div>
+            <div>
+                <h2>Date Range:</h2>
+                <p class="helptext">
+                    Format Example: 2023-01-01
+                </p>
+                <div class="date-container">
+                    <label>Start Date: <input type="text" name="startDate" placeholder="YYYY-MM-DD" required value="2006-12-01"></label>
+                    <label>End Date: <input type="text" name="endDate" placeholder="YYYY-MM-DD" required value="2023-12-31"></label>
+                </div>
+            </div>
+            <!-- <div class="flex-col">
+                <h2>File Name:</h2>
+                <p class="helptext">
+                    Enter file name.
+                    <br>
+                    The file name will be appended with "by_year", "by_month" or "by_day".
+                </p>
+                <label><input type="text" id="fileName" placeholder="File name part" required></label>
+            </div> -->
+            <div class="button-container">
+                <button type="submit">GET JSON File</button>
+            </div>
+        </form>
+    </div>
+    <script>
+        const downloadDataAsJSON = (data, fileName) => {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.download = fileName;
+            link.href = URL.createObjectURL(blob);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        const createFileName = (formData) => {
+        const selectedDimensionInput = Array.from(document.querySelectorAll('input[name="dimensions"]:checked'))[0];
+        const dimensionLabel = selectedDimensionInput.parentNode.textContent.trim();
+        const dimensionNumber = dimensionLabel.match(/^\d+/)[0];
+        const dimensionName = dimensionLabel.replace(/^\d+\.\s*/, '').replace(/\s+/g, '_').replace(/\./g, '_').toLowerCase();
+        const timeGranularity = formData.get('timeGranularity');
+        return `${dimensionNumber}_${dimensionName}_by_${timeGranularity}.json`;
+    }
+
+        document.getElementById('analyticsForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const params = new URLSearchParams();
+
+            formData.getAll('metrics').forEach(metric => params.append('metrics', metric));
+            formData.getAll('dimensions').forEach(dimension => params.append('dimensions', dimension));
+            const timeGranularity = formData.get('timeGranularity');
+            params.append('timeGranularity', timeGranularity);
+            params.append('startDate', formData.get('startDate'));
+            params.append('endDate', formData.get('endDate'));
+
+            const fileName = createFileName(formData);
+
+            fetch('http://localhost:3000/getAllData?' + params, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                downloadDataAsJSON(data, fileName);
+            })
+            .catch(error => console.error('Error fetching data:', error));
+        });
+    </script>
+</body>
+</html>
